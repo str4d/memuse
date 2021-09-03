@@ -3,13 +3,13 @@
 use core::mem;
 
 /// Trait for measuring the dynamic memory usage of types.
-trait DynamicUsage {
+pub trait DynamicUsage {
     /// Returns the amount of heap-allocated memory used by this type.
     fn dynamic_usage(&self) -> usize;
 }
 
 /// Marker trait for types that do not use heap-allocated memory.
-trait NoDynamicUsage {}
+pub trait NoDynamicUsage {}
 
 impl<T> DynamicUsage for T
 where
