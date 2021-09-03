@@ -31,6 +31,16 @@ impl_no_dynamic_usage!(i8, i16, i32, i64, i128, isize);
 impl_no_dynamic_usage!(u8, u16, u32, u64, u128, usize);
 impl_no_dynamic_usage!(f32, f64, char, bool);
 
+impl<T> DynamicUsage for Vec<T>
+where
+    T: DynamicUsage,
+{
+    fn dynamic_usage(&self) -> usize {
+        self.capacity() * mem::size_of::<T>()
+            + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -40,5 +50,13 @@ mod tests {
         assert_eq!(129u8.dynamic_usage(), 0);
         assert_eq!(3i128.dynamic_usage(), 0);
         assert_eq!(7.0f32.dynamic_usage(), 0);
+    }
+
+    #[test]
+    fn vec() {
+        let capacity = 7;
+        let mut a = Vec::with_capacity(capacity);
+        a.push(42u64);
+        assert_eq!(a.dynamic_usage(), capacity * mem::size_of::<u64>());
     }
 }
