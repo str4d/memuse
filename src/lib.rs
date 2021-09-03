@@ -1,7 +1,7 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+//! Measure dynamic memory usage of your types!
+
+/// Trait for measuring the dynamic memory usage of types.
+trait DynamicUsage {
+    /// Returns the amount of heap-allocated memory used by this type.
+    fn dynamic_usage(&self) -> usize;
 }
