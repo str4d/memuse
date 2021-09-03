@@ -41,6 +41,18 @@ where
     }
 }
 
+#[cfg(feature = "nonempty")]
+impl<T> DynamicUsage for nonempty::NonEmpty<T>
+where
+    T: DynamicUsage,
+{
+    fn dynamic_usage(&self) -> usize {
+        // NonEmpty<T> stores its head element separately from its tail Vec<T>.
+        (self.capacity() - 1) * mem::size_of::<T>()
+            + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -58,5 +70,16 @@ mod tests {
         let mut a = Vec::with_capacity(capacity);
         a.push(42u64);
         assert_eq!(a.dynamic_usage(), capacity * mem::size_of::<u64>());
+    }
+
+    #[cfg(feature = "nonempty")]
+    #[test]
+    fn nonempty() {
+        let a = nonempty::NonEmpty::new(42);
+        assert_eq!(a.dynamic_usage(), 0);
+
+        const CAPACITY: usize = 7;
+        let b = nonempty::NonEmpty::from_slice(&[27u128; CAPACITY]).unwrap();
+        assert_eq!(b.dynamic_usage(), (CAPACITY - 1) * mem::size_of::<u128>());
     }
 }
