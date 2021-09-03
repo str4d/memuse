@@ -1,6 +1,6 @@
 # memuse
 
-TBD
+This crate contains traits for measuring the memory usage of Rust types.
 
 ## License
 
