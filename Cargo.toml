@@ -11,3 +11,6 @@ edition = "2018"
 
 [dependencies]
 nonempty = { version = "0.7", optional = true }
+
+[dev-dependencies]
+peak_alloc = "0.1"
