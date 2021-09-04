@@ -46,7 +46,7 @@ pub trait DynamicUsage {
     /// Returns a best estimate of the amount of heap-allocated memory used by this type.
     ///
     /// For most types, this will return an exact value. However, for types that use a
-    /// complex allocation strategy (such as a `BTreeMap`), `memuse` cannot provide an
+    /// complex allocation strategy (such as a `HashMap`), `memuse` cannot provide an
     /// exact heap allocation value, as it does not have access to the internal details
     /// and can only infer allocations from observable properties (such as the number of
     /// elements in a collection, or constants extracted from the implementation of the
