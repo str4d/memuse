@@ -109,87 +109,49 @@ impl<T: DynamicUsage> DynamicUsage for Option<T> {
 // Collections
 //
 
-/// Returns the dynamic usage bounds for this iterable.
-fn iter_usage_bounds<'a, T: DynamicUsage + 'a, I: Iterator<Item = &'a T>>(
-    base_usage: usize,
-    i: I,
-) -> (usize, Option<usize>) {
-    let (lower, upper) = i.map(DynamicUsage::dynamic_usage_bounds).fold(
-        (0, Some(0)),
-        |(acc_lower, acc_upper), (lower, upper)| {
-            (acc_lower + lower, acc_upper.zip(upper).map(|(a, b)| a + b))
-        },
-    );
-    (base_usage + lower, upper.map(|u| base_usage + u))
+macro_rules! impl_iterable_dynamic_usage {
+    ($type:ty, $base_usage:expr) => {
+        impl<T: DynamicUsage> DynamicUsage for $type {
+            fn dynamic_usage(&self) -> usize {
+                $base_usage(self) + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+            }
+
+            fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+                let base = $base_usage(self);
+                let (lower, upper) = self.iter().map(DynamicUsage::dynamic_usage_bounds).fold(
+                    (0, Some(0)),
+                    |(acc_lower, acc_upper), (lower, upper)| {
+                        (acc_lower + lower, acc_upper.zip(upper).map(|(a, b)| a + b))
+                    },
+                );
+                (base + lower, upper.map(|u| base + u))
+            }
+        }
+    };
 }
 
-impl<T: DynamicUsage> DynamicUsage for &[T] {
-    fn dynamic_usage(&self) -> usize {
-        self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
-    }
+impl_iterable_dynamic_usage!(&[T], |_| 0);
+impl_iterable_dynamic_usage!(Vec<T>, |c: &Vec<T>| c.capacity() * mem::size_of::<T>());
 
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        iter_usage_bounds(0, self.iter())
-    }
-}
+impl_iterable_dynamic_usage!(BinaryHeap<T>, |c: &BinaryHeap<T>| {
+    // BinaryHeap<T> is a wrapper around Vec<T>
+    c.capacity() * mem::size_of::<T>()
+});
 
-impl<T: DynamicUsage> DynamicUsage for Vec<T> {
-    fn dynamic_usage(&self) -> usize {
-        self.capacity() * mem::size_of::<T>() + self.as_slice().dynamic_usage()
-    }
+impl_iterable_dynamic_usage!(LinkedList<T>, |c: &LinkedList<T>| {
+    c.len() * mem::size_of::<T>()
+});
 
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        iter_usage_bounds(self.capacity() * mem::size_of::<T>(), self.iter())
-    }
-}
-
-impl<T: DynamicUsage> DynamicUsage for BinaryHeap<T> {
-    fn dynamic_usage(&self) -> usize {
-        // BinaryHeap<T> is a wrapper around Vec<T>
-        self.capacity() * mem::size_of::<T>()
-            + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
-    }
-
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        iter_usage_bounds(self.capacity() * mem::size_of::<T>(), self.iter())
-    }
-}
-
-impl<T: DynamicUsage> DynamicUsage for LinkedList<T> {
-    fn dynamic_usage(&self) -> usize {
-        self.len() * mem::size_of::<T>()
-            + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
-    }
-
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        iter_usage_bounds(self.len() * mem::size_of::<T>(), self.iter())
-    }
-}
-
-impl<T: DynamicUsage> DynamicUsage for VecDeque<T> {
-    fn dynamic_usage(&self) -> usize {
-        // +1 since the ringbuffer always leaves one space empty.
-        (self.capacity() + 1) * mem::size_of::<T>()
-            + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
-    }
-
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        iter_usage_bounds((self.capacity() + 1) * mem::size_of::<T>(), self.iter())
-    }
-}
+impl_iterable_dynamic_usage!(VecDeque<T>, |c: &VecDeque<T>| {
+    // +1 since the ringbuffer always leaves one space empty.
+    (c.capacity() + 1) * mem::size_of::<T>()
+});
 
 #[cfg(feature = "nonempty")]
-impl<T: DynamicUsage> DynamicUsage for nonempty::NonEmpty<T> {
-    fn dynamic_usage(&self) -> usize {
-        // NonEmpty<T> stores its head element separately from its tail Vec<T>.
-        (self.capacity() - 1) * mem::size_of::<T>()
-            + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
-    }
-
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        iter_usage_bounds((self.capacity() - 1) * mem::size_of::<T>(), self.iter())
-    }
-}
+impl_iterable_dynamic_usage!(nonempty::NonEmpty<T>, |c: &nonempty::NonEmpty<T>| {
+    // NonEmpty<T> stores its head element separately from its tail Vec<T>.
+    (c.capacity() - 1) * mem::size_of::<T>()
+});
 
 #[cfg(test)]
 mod tests {
