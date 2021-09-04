@@ -73,6 +73,17 @@ impl<K: DynamicUsage, V: DynamicUsage> DynamicUsage for HashMap<K, V> {
                 .map(|(k, v)| k.dynamic_usage() + v.dynamic_usage())
                 .sum::<usize>()
     }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        (
+            dynamic_usage_for_capacity::<K, V>(self.capacity())
+                + self
+                    .iter()
+                    .map(|(k, v)| k.dynamic_usage_bounds().0 + v.dynamic_usage_bounds().0)
+                    .sum::<usize>(),
+            None,
+        )
+    }
 }
 
 impl<T: DynamicUsage> DynamicUsage for HashSet<T> {
@@ -80,6 +91,17 @@ impl<T: DynamicUsage> DynamicUsage for HashSet<T> {
         // HashSet<T> is just HashMap<T, ()>
         dynamic_usage_for_capacity::<T, ()>(self.capacity())
             + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        (
+            dynamic_usage_for_capacity::<T, ()>(self.capacity())
+                + self
+                    .iter()
+                    .map(|k| k.dynamic_usage_bounds().0)
+                    .sum::<usize>(),
+            None,
+        )
     }
 }
 
@@ -94,10 +116,9 @@ mod tests {
         // - Capacity of 12 -> 16 buckets
         // - Overhead is 1 byte per bucket
         // - Fixed overhead of WIDTH
-        assert_eq!(
-            h.dynamic_usage(),
-            16 * (mem::size_of::<(u16, u32)>() + 1) + WIDTH
-        );
+        let lower = 16 * (mem::size_of::<(u16, u32)>() + 1) + WIDTH;
+        assert_eq!(h.dynamic_usage(), lower);
+        assert_eq!(h.dynamic_usage_bounds(), (lower, None));
     }
 
     #[test]
@@ -107,6 +128,8 @@ mod tests {
         // - Capacity of 17 -> 32 buckets
         // - Overhead is 1 byte per bucket
         // - Fixed overhead of WIDTH
-        assert_eq!(h.dynamic_usage(), 32 * (mem::size_of::<u16>() + 1) + WIDTH);
+        let lower = 32 * (mem::size_of::<u16>() + 1) + WIDTH;
+        assert_eq!(h.dynamic_usage(), lower);
+        assert_eq!(h.dynamic_usage_bounds(), (lower, None));
     }
 }
