@@ -5,6 +5,7 @@
 #![deny(broken_intra_doc_links)]
 
 use core::mem;
+use std::collections::{BinaryHeap, LinkedList, VecDeque};
 
 /// Trait for measuring the dynamic memory usage of types.
 pub trait DynamicUsage {
@@ -45,6 +46,10 @@ impl<T: DynamicUsage> DynamicUsage for Option<T> {
     }
 }
 
+//
+// Collections
+//
+
 impl<T: DynamicUsage> DynamicUsage for &[T] {
     fn dynamic_usage(&self) -> usize {
         self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
@@ -54,6 +59,29 @@ impl<T: DynamicUsage> DynamicUsage for &[T] {
 impl<T: DynamicUsage> DynamicUsage for Vec<T> {
     fn dynamic_usage(&self) -> usize {
         self.capacity() * mem::size_of::<T>() + self.as_slice().dynamic_usage()
+    }
+}
+
+impl<T: DynamicUsage> DynamicUsage for BinaryHeap<T> {
+    fn dynamic_usage(&self) -> usize {
+        // BinaryHeap<T> is a wrapper around Vec<T>
+        self.capacity() * mem::size_of::<T>()
+            + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+    }
+}
+
+impl<T: DynamicUsage> DynamicUsage for LinkedList<T> {
+    fn dynamic_usage(&self) -> usize {
+        self.len() * mem::size_of::<T>()
+            + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+    }
+}
+
+impl<T: DynamicUsage> DynamicUsage for VecDeque<T> {
+    fn dynamic_usage(&self) -> usize {
+        // +1 since the ringbuffer always leaves one space empty.
+        (self.capacity() + 1) * mem::size_of::<T>()
+            + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
     }
 }
 
