@@ -9,7 +9,7 @@ macro_rules! tuple_impls {
         }
     )+) => {
         $(
-            impl<$($T: DynamicUsage),+> DynamicUsage for ($($T,)+)
+            impl<$($T),+> DynamicUsage for ($($T,)+) where $($T: DynamicUsage),+
             {
                 fn dynamic_usage(&self) -> usize {
                     array::IntoIter::new([$(self.$idx.dynamic_usage()),+]).sum::<usize>()

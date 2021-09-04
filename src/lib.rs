@@ -15,9 +15,6 @@
 use core::mem;
 use std::collections::{BinaryHeap, LinkedList, VecDeque};
 
-mod hash;
-mod tuple;
-
 /// Trait for measuring the dynamic memory usage of types.
 pub trait DynamicUsage {
     /// Returns a best estimate of the amount of heap-allocated memory used by this type.
@@ -180,6 +177,13 @@ impl_iterable_dynamic_usage!(nonempty::NonEmpty<T>, |c: &nonempty::NonEmpty<T>| 
     // NonEmpty<T> stores its head element separately from its tail Vec<T>.
     (c.capacity() - 1) * mem::size_of::<T>()
 });
+
+//
+// Larger definitions (placed at the end so they render more nicely in docs).
+//
+
+mod hash;
+mod tuple;
 
 #[cfg(test)]
 mod tests {
