@@ -16,9 +16,9 @@ use crate::DynamicUsage;
 //   https://github.com/rust-lang/hashbrown/blob/dbd6dbe30a4076c0ea65ca5bd57036c27f3cc7c9/src/raw/sse2.rs#L14-L19
 
 #[cfg(all(target_feature = "sse2", target_arch = "x86", not(miri)))]
-const WIDTH: usize = mem::size_of::<core::arch::x86::__m128i>();
+pub(crate) const WIDTH: usize = mem::size_of::<core::arch::x86::__m128i>();
 #[cfg(all(target_feature = "sse2", target_arch = "x86_64", not(miri)))]
-const WIDTH: usize = mem::size_of::<core::arch::x86_64::__m128i>();
+pub(crate) const WIDTH: usize = mem::size_of::<core::arch::x86_64::__m128i>();
 #[cfg(all(
     any(not(target_feature = "sse2"), miri),
     any(
@@ -28,7 +28,7 @@ const WIDTH: usize = mem::size_of::<core::arch::x86_64::__m128i>();
         target_arch = "wasm32",
     )
 ))]
-const WIDTH: usize = mem::size_of::<u64>();
+pub(crate) const WIDTH: usize = mem::size_of::<u64>();
 #[cfg(all(
     any(not(target_feature = "sse2"), miri),
     target_pointer_width = "32",
@@ -36,7 +36,7 @@ const WIDTH: usize = mem::size_of::<u64>();
     not(target_arch = "x86_64"),
     not(target_arch = "wasm32"),
 ))]
-const WIDTH: usize = mem::size_of::<u32>();
+pub(crate) const WIDTH: usize = mem::size_of::<u32>();
 
 fn dynamic_usage_for_capacity<K, V>(cap: usize) -> usize {
     // The bucket calculation is sourced from here:

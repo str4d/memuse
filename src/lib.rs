@@ -1,4 +1,12 @@
 //! Measure dynamic memory usage of your types!
+//!
+//! ## Minimum Supported Rust Version
+//!
+//! Requires Rust **1.51** or newer.
+//!
+//! In the future, we reserve the right to change MSRV (i.e. MSRV is out-of-scope for this
+//! crate's SemVer guarantees), however when we do it will be accompanied by a minor
+//! version bump.
 
 #![forbid(unsafe_code)]
 // Catch documentation errors caused by code changes.
@@ -6,8 +14,6 @@
 
 use core::mem;
 use std::collections::{BinaryHeap, LinkedList, VecDeque};
-
-mod hash;
 
 /// Trait for measuring the dynamic memory usage of types.
 pub trait DynamicUsage {
@@ -106,6 +112,25 @@ impl<T: DynamicUsage> DynamicUsage for Option<T> {
 }
 
 //
+// Arrays
+//
+
+impl<T: DynamicUsage, const N: usize> DynamicUsage for [T; N] {
+    fn dynamic_usage(&self) -> usize {
+        self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        self.iter().map(DynamicUsage::dynamic_usage_bounds).fold(
+            (0, Some(0)),
+            |(acc_lower, acc_upper), (lower, upper)| {
+                (acc_lower + lower, acc_upper.zip(upper).map(|(a, b)| a + b))
+            },
+        )
+    }
+}
+
+//
 // Collections
 //
 
@@ -153,6 +178,13 @@ impl_iterable_dynamic_usage!(nonempty::NonEmpty<T>, |c: &nonempty::NonEmpty<T>| 
     (c.capacity() - 1) * mem::size_of::<T>()
 });
 
+//
+// Larger definitions (placed at the end so they render more nicely in docs).
+//
+
+mod hash;
+mod tuple;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,6 +219,21 @@ mod tests {
         assert_eq!(a.dynamic_usage_bounds(), (0, Some(0)));
         assert_eq!(b.dynamic_usage(), 4);
         assert_eq!(b.dynamic_usage_bounds(), (4, Some(4)));
+    }
+
+    #[test]
+    fn array() {
+        let a = [7; 42];
+        assert_eq!(a.dynamic_usage(), 0);
+        assert_eq!(a.dynamic_usage_bounds(), (0, Some(0)));
+
+        let mut b = [None, None, None, None];
+        assert_eq!(b.dynamic_usage(), 0);
+        assert_eq!(b.dynamic_usage_bounds(), (0, Some(0)));
+
+        b[0] = Some(vec![4u8; 20]);
+        assert_eq!(b.dynamic_usage(), 20);
+        assert_eq!(b.dynamic_usage_bounds(), (20, Some(20)));
     }
 
     #[test]
