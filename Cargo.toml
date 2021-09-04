@@ -8,6 +8,9 @@ homepage = "https://github.com/str4d/memuse"
 repository = "https://github.com/str4d/memuse"
 license = "MIT/Apache-2.0"
 edition = "2018"
+readme = "README.md"
+keywords = ["heap", "allocation", "measurement"]
+categories = ["development-tools::profiling", "memory-management"]
 
 [dependencies]
 nonempty = { version = "0.7", optional = true }
