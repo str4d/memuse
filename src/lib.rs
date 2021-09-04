@@ -7,6 +7,32 @@
 //! In the future, we reserve the right to change MSRV (i.e. MSRV is out-of-scope for this
 //! crate's SemVer guarantees), however when we do it will be accompanied by a minor
 //! version bump.
+//!
+//! ## Usage
+//!
+//! ```
+//! # use std::collections::HashMap;
+//! use memuse::DynamicUsage;
+//!
+//! // Simple types don't allocate memory on the heap.
+//! assert_eq!(7u64.dynamic_usage(), 0);
+//! assert_eq!("I'm simple!".dynamic_usage(), 0);
+//!
+//! // When a type allocates memory, we can see it!
+//! assert_eq!(vec![7u64; 2].dynamic_usage(), 16);
+//!
+//! // We see the memory the type has allocated, even if it isn't being used.
+//! let empty: Vec<u32> = Vec::with_capacity(100);
+//! assert_eq!(empty.len(), 0);
+//! assert_eq!(empty.dynamic_usage(), 400);
+//!
+//! // For some types, we can't measure the exact memory usage, so we return a best
+//! // estimate. If you need precision, call `dynamic_usage_bounds` which returns a
+//! // lower bound, and (if known) an upper bound.
+//! let map: HashMap<u8, u64> = HashMap::with_capacity(27);
+//! let (lower, upper): (usize, Option<usize>) = map.dynamic_usage_bounds();
+//! assert!(upper.is_none());
+//! ```
 
 #![forbid(unsafe_code)]
 // Catch documentation errors caused by code changes.
