@@ -1,5 +1,28 @@
 //! Measure dynamic memory usage of your types!
 //!
+//! ## About
+//!
+//! Memory-tracking is a common activity in large applications, particularly ones
+//! that receive data from a network and store it in memory. By monitoring how much
+//! memory is used by different areas of the application, memory pressure can be
+//! alleviated by ignoring new packets, or implementing random drop logic for DoS
+//! mitigation.
+//!
+//! Measuring memory use on the stack is easy, with [`std::mem::size_of`] and
+//! friends. Measuring memory allocated on the heap is more tricky. Applications can
+//! use a custom global allocator to track the memory usage of different areas. This
+//! isn't an option for reusable library code however, and the nearest alternative
+//! (using custom allocators for individual types) is currently only an experimental
+//! feature in nightly Rust ([`allocator_api`]).
+//!
+//! [`allocator_api`]: https://github.com/rust-lang/rust/issues/32838
+//!
+//! This crate takes a different approach: it provides traits that library authors
+//! can use to expose dynamic memory usage information on their types. By composing
+//! these implementations, we gain the ability to query the amount of heap-allocated
+//! memory in use by specific instances of types at any point in time, without any
+//! changes to the way in which these types are constructed.
+//!
 //! ## Minimum Supported Rust Version
 //!
 //! Requires Rust **1.51** or newer.
