@@ -7,6 +7,7 @@
 use core::mem;
 use std::collections::{BinaryHeap, LinkedList, VecDeque};
 
+mod btree;
 mod hash;
 
 /// Trait for measuring the dynamic memory usage of types.
