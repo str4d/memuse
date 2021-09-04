@@ -1,5 +1,9 @@
 //! Measure dynamic memory usage of your types!
 
+#![forbid(unsafe_code)]
+// Catch documentation errors caused by code changes.
+#![deny(broken_intra_doc_links)]
+
 use core::mem;
 
 /// Trait for measuring the dynamic memory usage of types.
