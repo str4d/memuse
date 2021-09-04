@@ -11,10 +11,7 @@ pub trait DynamicUsage {
 /// Marker trait for types that do not use heap-allocated memory.
 pub trait NoDynamicUsage {}
 
-impl<T> DynamicUsage for T
-where
-    T: NoDynamicUsage,
-{
+impl<T: NoDynamicUsage> DynamicUsage for T {
     #[inline(always)]
     fn dynamic_usage(&self) -> usize {
         0
@@ -38,38 +35,26 @@ impl DynamicUsage for String {
     }
 }
 
-impl<T> DynamicUsage for Option<T>
-where
-    T: DynamicUsage,
-{
+impl<T: DynamicUsage> DynamicUsage for Option<T> {
     fn dynamic_usage(&self) -> usize {
         self.as_ref().map(DynamicUsage::dynamic_usage).unwrap_or(0)
     }
 }
 
-impl<T> DynamicUsage for &[T]
-where
-    T: DynamicUsage,
-{
+impl<T: DynamicUsage> DynamicUsage for &[T] {
     fn dynamic_usage(&self) -> usize {
         self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
     }
 }
 
-impl<T> DynamicUsage for Vec<T>
-where
-    T: DynamicUsage,
-{
+impl<T: DynamicUsage> DynamicUsage for Vec<T> {
     fn dynamic_usage(&self) -> usize {
         self.capacity() * mem::size_of::<T>() + self.as_slice().dynamic_usage()
     }
 }
 
 #[cfg(feature = "nonempty")]
-impl<T> DynamicUsage for nonempty::NonEmpty<T>
-where
-    T: DynamicUsage,
-{
+impl<T: DynamicUsage> DynamicUsage for nonempty::NonEmpty<T> {
     fn dynamic_usage(&self) -> usize {
         // NonEmpty<T> stores its head element separately from its tail Vec<T>.
         (self.capacity() - 1) * mem::size_of::<T>()
