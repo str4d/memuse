@@ -1,5 +1,28 @@
 //! Measure dynamic memory usage of your types!
 //!
+//! ## About
+//!
+//! Memory-tracking is a common activity in large applications, particularly ones
+//! that receive data from a network and store it in memory. By monitoring how much
+//! memory is used by different areas of the application, memory pressure can be
+//! alleviated by ignoring new packets, or implementing random drop logic for DoS
+//! mitigation.
+//!
+//! Measuring memory use on the stack is easy, with [`std::mem::size_of`] and
+//! friends. Measuring memory allocated on the heap is more tricky. Applications can
+//! use a custom global allocator to track the memory usage of different areas. This
+//! isn't an option for reusable library code however, and the nearest alternative
+//! (using custom allocators for individual types) is currently only an experimental
+//! feature in nightly Rust ([`allocator_api`]).
+//!
+//! [`allocator_api`]: https://github.com/rust-lang/rust/issues/32838
+//!
+//! This crate takes a different approach: it provides traits that library authors
+//! can use to expose dynamic memory usage information on their types. By composing
+//! these implementations, we gain the ability to query the amount of heap-allocated
+//! memory in use by specific instances of types at any point in time, without any
+//! changes to the way in which these types are constructed.
+//!
 //! ## Minimum Supported Rust Version
 //!
 //! Requires Rust **1.51** or newer.
@@ -7,6 +30,32 @@
 //! In the future, we reserve the right to change MSRV (i.e. MSRV is out-of-scope for this
 //! crate's SemVer guarantees), however when we do it will be accompanied by a minor
 //! version bump.
+//!
+//! ## Usage
+//!
+//! ```
+//! # use std::collections::HashMap;
+//! use memuse::DynamicUsage;
+//!
+//! // Simple types don't allocate memory on the heap.
+//! assert_eq!(7u64.dynamic_usage(), 0);
+//! assert_eq!("I'm simple!".dynamic_usage(), 0);
+//!
+//! // When a type allocates memory, we can see it!
+//! assert_eq!(vec![7u64; 2].dynamic_usage(), 16);
+//!
+//! // We see the memory the type has allocated, even if it isn't being used.
+//! let empty: Vec<u32> = Vec::with_capacity(100);
+//! assert_eq!(empty.len(), 0);
+//! assert_eq!(empty.dynamic_usage(), 400);
+//!
+//! // For some types, we can't measure the exact memory usage, so we return a best
+//! // estimate. If you need precision, call `dynamic_usage_bounds` which returns a
+//! // lower bound, and (if known) an upper bound.
+//! let map: HashMap<u8, u64> = HashMap::with_capacity(27);
+//! let (lower, upper): (usize, Option<usize>) = map.dynamic_usage_bounds();
+//! assert!(upper.is_none());
+//! ```
 
 #![forbid(unsafe_code)]
 // Catch documentation errors caused by code changes.
@@ -20,7 +69,7 @@ pub trait DynamicUsage {
     /// Returns a best estimate of the amount of heap-allocated memory used by this type.
     ///
     /// For most types, this will return an exact value. However, for types that use a
-    /// complex allocation strategy (such as a `BTreeMap`), `memuse` cannot provide an
+    /// complex allocation strategy (such as a `HashMap`), `memuse` cannot provide an
     /// exact heap allocation value, as it does not have access to the internal details
     /// and can only infer allocations from observable properties (such as the number of
     /// elements in a collection, or constants extracted from the implementation of the
