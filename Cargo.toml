@@ -1,7 +1,7 @@
 [package]
 name = "memuse"
 description = "Traits for measuring dynamic memory usage of types"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Jack Grigg <thestr4d@gmail.com>"]
 documentation = "https://docs.rs/memuse/"
 homepage = "https://github.com/str4d/memuse"
