@@ -126,16 +126,65 @@ impl<T: NoDynamicUsage> DynamicUsage for T {
     }
 }
 
+//
+// Helper macros
+//
+
 macro_rules! impl_no_dynamic_usage {
     ($($type:ty),+) => {
         $(impl NoDynamicUsage for $type {})+
     };
 }
 
+macro_rules! impl_iterable_dynamic_usage {
+    ($type:ty, $base_usage:expr) => {
+        impl<T: DynamicUsage> DynamicUsage for $type {
+            fn dynamic_usage(&self) -> usize {
+                $base_usage(self) + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+            }
+
+            fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+                let base = $base_usage(self);
+                let (lower, upper) = self.iter().map(DynamicUsage::dynamic_usage_bounds).fold(
+                    (0, Some(0)),
+                    |(acc_lower, acc_upper), (lower, upper)| {
+                        (acc_lower + lower, acc_upper.zip(upper).map(|(a, b)| a + b))
+                    },
+                );
+                (base + lower, upper.map(|u| base + u))
+            }
+        }
+    };
+}
+
+//
+// Primitives
+//
+
+impl_no_dynamic_usage!(());
 impl_no_dynamic_usage!(i8, i16, i32, i64, i128, isize);
 impl_no_dynamic_usage!(u8, u16, u32, u64, u128, usize);
-impl_no_dynamic_usage!(f32, f64, char, bool);
-impl_no_dynamic_usage!(&str);
+impl_no_dynamic_usage!(f32, f64, bool);
+impl_no_dynamic_usage!(char, str);
+
+// Tuples are handled below (so they render more nicely in docs)
+
+impl<T: DynamicUsage, const N: usize> DynamicUsage for [T; N] {
+    fn dynamic_usage(&self) -> usize {
+        self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        self.iter().map(DynamicUsage::dynamic_usage_bounds).fold(
+            (0, Some(0)),
+            |(acc_lower, acc_upper), (lower, upper)| {
+                (acc_lower + lower, acc_upper.zip(upper).map(|(a, b)| a + b))
+            },
+        )
+    }
+}
+
+impl_iterable_dynamic_usage!([T], |_| 0);
 
 impl DynamicUsage for String {
     fn dynamic_usage(&self) -> usize {
@@ -161,50 +210,9 @@ impl<T: DynamicUsage> DynamicUsage for Option<T> {
 }
 
 //
-// Arrays
-//
-
-impl<T: DynamicUsage, const N: usize> DynamicUsage for [T; N] {
-    fn dynamic_usage(&self) -> usize {
-        self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
-    }
-
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        self.iter().map(DynamicUsage::dynamic_usage_bounds).fold(
-            (0, Some(0)),
-            |(acc_lower, acc_upper), (lower, upper)| {
-                (acc_lower + lower, acc_upper.zip(upper).map(|(a, b)| a + b))
-            },
-        )
-    }
-}
-
-//
 // Collections
 //
 
-macro_rules! impl_iterable_dynamic_usage {
-    ($type:ty, $base_usage:expr) => {
-        impl<T: DynamicUsage> DynamicUsage for $type {
-            fn dynamic_usage(&self) -> usize {
-                $base_usage(self) + self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
-            }
-
-            fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-                let base = $base_usage(self);
-                let (lower, upper) = self.iter().map(DynamicUsage::dynamic_usage_bounds).fold(
-                    (0, Some(0)),
-                    |(acc_lower, acc_upper), (lower, upper)| {
-                        (acc_lower + lower, acc_upper.zip(upper).map(|(a, b)| a + b))
-                    },
-                );
-                (base + lower, upper.map(|u| base + u))
-            }
-        }
-    };
-}
-
-impl_iterable_dynamic_usage!(&[T], |_| 0);
 impl_iterable_dynamic_usage!(Vec<T>, |c: &Vec<T>| c.capacity() * mem::size_of::<T>());
 
 impl_iterable_dynamic_usage!(BinaryHeap<T>, |c: &BinaryHeap<T>| {
