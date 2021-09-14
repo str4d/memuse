@@ -202,6 +202,18 @@ impl DynamicUsage for String {
 // Containers
 //
 
+impl<T: DynamicUsage> DynamicUsage for Box<T> {
+    fn dynamic_usage(&self) -> usize {
+        mem::size_of::<T>() + self.as_ref().dynamic_usage()
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        let box_size = mem::size_of::<T>();
+        let (inner_lower, inner_upper) = self.as_ref().dynamic_usage_bounds();
+        (box_size + inner_lower, inner_upper.map(|u| box_size + u))
+    }
+}
+
 impl<T: DynamicUsage> DynamicUsage for Option<T> {
     fn dynamic_usage(&self) -> usize {
         self.as_ref().map(DynamicUsage::dynamic_usage).unwrap_or(0)
@@ -287,6 +299,23 @@ mod tests {
 
         assert_eq!(String::new().dynamic_usage_bounds(), (0, Some(0)));
         assert_eq!("foobar".to_string().dynamic_usage_bounds(), (6, Some(6)));
+    }
+
+    #[test]
+    fn boxed() {
+        let a: u64 = 7;
+        assert_eq!(a.dynamic_usage(), 0);
+        assert_eq!(a.dynamic_usage_bounds(), (0, Some(0)));
+
+        let b: Box<u64> = Box::new(42);
+        assert_eq!(b.dynamic_usage(), 8);
+        assert_eq!(b.dynamic_usage_bounds(), (8, Some(8)));
+
+        let capacity = 7;
+        let c: Box<Vec<u16>> = Box::new(Vec::with_capacity(capacity));
+        let expected = mem::size_of::<Vec<u16>>() + capacity * mem::size_of::<u16>();
+        assert_eq!(c.dynamic_usage(), expected);
+        assert_eq!(c.dynamic_usage_bounds(), (expected, Some(expected)));
     }
 
     #[test]
