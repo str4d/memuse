@@ -111,28 +111,25 @@ pub trait DynamicUsage {
     fn dynamic_usage_bounds(&self) -> (usize, Option<usize>);
 }
 
-/// Marker trait for types that do not use heap-allocated memory.
-pub trait NoDynamicUsage {}
-
-impl<T: NoDynamicUsage> DynamicUsage for T {
-    #[inline(always)]
-    fn dynamic_usage(&self) -> usize {
-        0
-    }
-
-    #[inline(always)]
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        (0, Some(0))
-    }
-}
-
 //
 // Helper macros
 //
 
 macro_rules! impl_no_dynamic_usage {
     ($($type:ty),+) => {
-        $(impl NoDynamicUsage for $type {})+
+        $(
+            impl DynamicUsage for $type {
+                #[inline(always)]
+                fn dynamic_usage(&self) -> usize {
+                    0
+                }
+
+                #[inline(always)]
+                fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+                    (0, Some(0))
+                }
+            }
+        )+
     };
 }
 
