@@ -186,6 +186,10 @@ impl<T: DynamicUsage, const N: usize> DynamicUsage for [T; N] {
 
 impl_iterable_dynamic_usage!([T], |_| 0);
 
+//
+// Structs
+//
+
 impl DynamicUsage for String {
     fn dynamic_usage(&self) -> usize {
         self.capacity()
@@ -197,6 +201,10 @@ impl DynamicUsage for String {
     }
 }
 
+//
+// Containers
+//
+
 impl<T: DynamicUsage> DynamicUsage for Option<T> {
     fn dynamic_usage(&self) -> usize {
         self.as_ref().map(DynamicUsage::dynamic_usage).unwrap_or(0)
@@ -206,6 +214,22 @@ impl<T: DynamicUsage> DynamicUsage for Option<T> {
         self.as_ref()
             .map(DynamicUsage::dynamic_usage_bounds)
             .unwrap_or((0, Some(0)))
+    }
+}
+
+impl<T: DynamicUsage, E: DynamicUsage> DynamicUsage for Result<T, E> {
+    fn dynamic_usage(&self) -> usize {
+        match self {
+            Ok(t) => t.dynamic_usage(),
+            Err(e) => e.dynamic_usage(),
+        }
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        match self {
+            Ok(t) => t.dynamic_usage_bounds(),
+            Err(e) => e.dynamic_usage_bounds(),
+        }
     }
 }
 
