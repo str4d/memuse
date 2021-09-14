@@ -111,77 +111,27 @@ pub trait DynamicUsage {
     fn dynamic_usage_bounds(&self) -> (usize, Option<usize>);
 }
 
-/// Marker trait for types that do not use heap-allocated memory.
-pub trait NoDynamicUsage {}
-
-impl<T: NoDynamicUsage> DynamicUsage for T {
-    #[inline(always)]
-    fn dynamic_usage(&self) -> usize {
-        0
-    }
-
-    #[inline(always)]
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        (0, Some(0))
-    }
-}
+//
+// Helper macros
+//
 
 macro_rules! impl_no_dynamic_usage {
     ($($type:ty),+) => {
-        $(impl NoDynamicUsage for $type {})+
+        $(
+            impl DynamicUsage for $type {
+                #[inline(always)]
+                fn dynamic_usage(&self) -> usize {
+                    0
+                }
+
+                #[inline(always)]
+                fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+                    (0, Some(0))
+                }
+            }
+        )+
     };
 }
-
-impl_no_dynamic_usage!(i8, i16, i32, i64, i128, isize);
-impl_no_dynamic_usage!(u8, u16, u32, u64, u128, usize);
-impl_no_dynamic_usage!(f32, f64, char, bool);
-impl_no_dynamic_usage!(&str);
-
-impl DynamicUsage for String {
-    fn dynamic_usage(&self) -> usize {
-        self.capacity()
-    }
-
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        let usage = self.capacity();
-        (usage, Some(usage))
-    }
-}
-
-impl<T: DynamicUsage> DynamicUsage for Option<T> {
-    fn dynamic_usage(&self) -> usize {
-        self.as_ref().map(DynamicUsage::dynamic_usage).unwrap_or(0)
-    }
-
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        self.as_ref()
-            .map(DynamicUsage::dynamic_usage_bounds)
-            .unwrap_or((0, Some(0)))
-    }
-}
-
-//
-// Arrays
-//
-
-impl<T: DynamicUsage, const N: usize> DynamicUsage for [T; N] {
-    fn dynamic_usage(&self) -> usize {
-        self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
-    }
-
-    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
-        self.iter().map(DynamicUsage::dynamic_usage_bounds).fold(
-            (0, Some(0)),
-            |(acc_lower, acc_upper), (lower, upper)| {
-                (acc_lower + lower, acc_upper.zip(upper).map(|(a, b)| a + b))
-            },
-        )
-    }
-}
-
-//
-// Collections
-//
 
 macro_rules! impl_iterable_dynamic_usage {
     ($type:ty, $base_usage:expr) => {
@@ -204,7 +154,98 @@ macro_rules! impl_iterable_dynamic_usage {
     };
 }
 
-impl_iterable_dynamic_usage!(&[T], |_| 0);
+//
+// Primitives
+//
+
+impl_no_dynamic_usage!(());
+impl_no_dynamic_usage!(i8, i16, i32, i64, i128, isize);
+impl_no_dynamic_usage!(u8, u16, u32, u64, u128, usize);
+impl_no_dynamic_usage!(f32, f64, bool);
+impl_no_dynamic_usage!(char, str);
+
+// Tuples are handled below (so they render more nicely in docs)
+
+impl<T: DynamicUsage, const N: usize> DynamicUsage for [T; N] {
+    fn dynamic_usage(&self) -> usize {
+        self.iter().map(DynamicUsage::dynamic_usage).sum::<usize>()
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        self.iter().map(DynamicUsage::dynamic_usage_bounds).fold(
+            (0, Some(0)),
+            |(acc_lower, acc_upper), (lower, upper)| {
+                (acc_lower + lower, acc_upper.zip(upper).map(|(a, b)| a + b))
+            },
+        )
+    }
+}
+
+impl_iterable_dynamic_usage!([T], |_| 0);
+
+//
+// Structs
+//
+
+impl DynamicUsage for String {
+    fn dynamic_usage(&self) -> usize {
+        self.capacity()
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        let usage = self.capacity();
+        (usage, Some(usage))
+    }
+}
+
+//
+// Containers
+//
+
+impl<T: DynamicUsage> DynamicUsage for Box<T> {
+    fn dynamic_usage(&self) -> usize {
+        mem::size_of::<T>() + self.as_ref().dynamic_usage()
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        let box_size = mem::size_of::<T>();
+        let (inner_lower, inner_upper) = self.as_ref().dynamic_usage_bounds();
+        (box_size + inner_lower, inner_upper.map(|u| box_size + u))
+    }
+}
+
+impl<T: DynamicUsage> DynamicUsage for Option<T> {
+    fn dynamic_usage(&self) -> usize {
+        self.as_ref().map(DynamicUsage::dynamic_usage).unwrap_or(0)
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        self.as_ref()
+            .map(DynamicUsage::dynamic_usage_bounds)
+            .unwrap_or((0, Some(0)))
+    }
+}
+
+impl<T: DynamicUsage, E: DynamicUsage> DynamicUsage for Result<T, E> {
+    fn dynamic_usage(&self) -> usize {
+        match self {
+            Ok(t) => t.dynamic_usage(),
+            Err(e) => e.dynamic_usage(),
+        }
+    }
+
+    fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+        match self {
+            Ok(t) => t.dynamic_usage_bounds(),
+            Err(e) => e.dynamic_usage_bounds(),
+        }
+    }
+}
+
+//
+// Collections
+//
+
 impl_iterable_dynamic_usage!(Vec<T>, |c: &Vec<T>| c.capacity() * mem::size_of::<T>());
 
 impl_iterable_dynamic_usage!(BinaryHeap<T>, |c: &BinaryHeap<T>| {
@@ -258,6 +299,23 @@ mod tests {
 
         assert_eq!(String::new().dynamic_usage_bounds(), (0, Some(0)));
         assert_eq!("foobar".to_string().dynamic_usage_bounds(), (6, Some(6)));
+    }
+
+    #[test]
+    fn boxed() {
+        let a: u64 = 7;
+        assert_eq!(a.dynamic_usage(), 0);
+        assert_eq!(a.dynamic_usage_bounds(), (0, Some(0)));
+
+        let b: Box<u64> = Box::new(42);
+        assert_eq!(b.dynamic_usage(), 8);
+        assert_eq!(b.dynamic_usage_bounds(), (8, Some(8)));
+
+        let capacity = 7;
+        let c: Box<Vec<u16>> = Box::new(Vec::with_capacity(capacity));
+        let expected = mem::size_of::<Vec<u16>>() + capacity * mem::size_of::<u16>();
+        assert_eq!(c.dynamic_usage(), expected);
+        assert_eq!(c.dynamic_usage_bounds(), (expected, Some(expected)));
     }
 
     #[test]
