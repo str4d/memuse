@@ -1,0 +1,18 @@
+[package]
+name = "memuse_derive"
+description = "Custom derive support for memuse"
+version = "0.0.0"
+authors = ["Jack Grigg <thestr4d@gmail.com>"]
+homepage = "https://github.com/str4d/memuse"
+repository = "https://github.com/str4d/memuse/tree/main/derive"
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = "1"
+synstructure = "0.12"
