@@ -6,7 +6,7 @@ and this project adheres to Rust's notion of
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). All versions prior
 to 1.0.0 are beta releases.
 
-## Unreleased
+## [0.2.1] - 2022-09-24
 ### Added
 - `impl_no_dynamic_usage!()` helper macro to implement `DynamicUsage` for simple
   types that don't allocate.
