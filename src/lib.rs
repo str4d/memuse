@@ -115,6 +115,52 @@ pub trait DynamicUsage {
 // Helper macros
 //
 
+/// Helper to implement [`DynamicUsage`] for simple types that don't allocate.
+///
+/// # Examples
+///
+/// ```
+/// // Must be imported so it is accessible to the macro.
+/// use memuse::DynamicUsage;
+///
+/// struct RegisterByte(u8);
+/// struct RegisterWord(u16);
+///
+/// memuse::impl_no_dynamic_usage!(RegisterByte, RegisterWord);
+/// ```
+///
+/// The above is equivalent to:
+/// ```
+/// use memuse::DynamicUsage;
+///
+/// struct RegisterByte(u8);
+/// struct RegisterWord(u16);
+///
+/// impl DynamicUsage for RegisterByte {
+///     #[inline(always)]
+///     fn dynamic_usage(&self) -> usize {
+///         0
+///     }
+///
+///     #[inline(always)]
+///     fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+///         (0, Some(0))
+///     }
+/// }
+///
+/// impl DynamicUsage for RegisterWord {
+///     #[inline(always)]
+///     fn dynamic_usage(&self) -> usize {
+///         0
+///     }
+///
+///     #[inline(always)]
+///     fn dynamic_usage_bounds(&self) -> (usize, Option<usize>) {
+///         (0, Some(0))
+///     }
+/// }
+/// ```
+#[macro_export]
 macro_rules! impl_no_dynamic_usage {
     ($($type:ty),+) => {
         $(
