@@ -315,11 +315,7 @@ mod hash;
 // implemented either here or in the external crate).
 //
 
-#[cfg(feature = "nonempty")]
-impl_iterable_dynamic_usage!(nonempty::NonEmpty<T>, |c: &nonempty::NonEmpty<T>| {
-    // NonEmpty<T> stores its head element separately from its tail Vec<T>.
-    (c.capacity() - 1) * mem::size_of::<T>()
-});
+mod external;
 
 //
 // Larger definitions (placed at the end so they render more nicely in docs).

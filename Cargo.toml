@@ -13,4 +13,5 @@ keywords = ["heap", "allocation", "measurement"]
 categories = ["development-tools::profiling", "memory-management"]
 
 [dependencies]
+crossbeam-channel = { version = "0.5", optional = true }
 nonempty = { version = "0.7", optional = true }
