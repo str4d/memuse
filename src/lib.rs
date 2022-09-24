@@ -272,6 +272,7 @@ impl_iterable_dynamic_usage!(nonempty::NonEmpty<T>, |c: &nonempty::NonEmpty<T>| 
 // Larger definitions (placed at the end so they render more nicely in docs).
 //
 
+mod btree;
 mod hash;
 mod tuple;
 
