@@ -7,6 +7,8 @@ and this project adheres to Rust's notion of
 to 1.0.0 are beta releases.
 
 ## Unreleased
+
+## [0.2.2] - 2022-12-13
 ### Added
 - `no-std` support via a default-enabled `std` feature flag.
 
