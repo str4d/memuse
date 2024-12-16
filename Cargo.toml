@@ -13,7 +13,7 @@ keywords = ["heap", "allocation", "measurement"]
 categories = ["development-tools::profiling", "memory-management"]
 
 [dependencies]
-nonempty = { version = "0.7", optional = true }
+nonempty = { version = "0.10", optional = true }
 
 [features]
 default = ["std"]
